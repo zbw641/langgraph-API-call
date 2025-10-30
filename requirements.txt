@@ -1,0 +1,11 @@
+Flask==3.1.2
+jieba==0.42.1
+langchain_core==1.0.4
+langchain_openai==1.0.2
+langgraph==1.0.3
+loguru==0.7.2
+python-dotenv==1.2.1
+Requests==2.32.5
+similarities==1.2.3
+torch==2.9.0
+transformers==4.57.1
