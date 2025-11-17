@@ -1,120 +1,27 @@
-"""测试入口"""
-from source.agent import build_vector_store
-from source.graph import create_agent_graph
-from langchain_core.messages import HumanMessage
-import time
+import csv
 
+# 你提供的数据
+qa_data = [
+    ("个体工商户未按时报送年度报告的，登记机关应如何处理？", "载入经营异常名录，并在企业信用信息公示系统上向社会公示。"),
+    ("外国专利代理机构在中国设立常驻代表机构，须经哪个部门批准？", "国务院专利行政部门。"),
+    ("中医药法规定，中医诊所超出备案范围开展医疗活动的，罚款区间是多少？", "1 万元以上3 万元以下。"),
+    ("个人独资企业成立后无正当理由超过多久未开业，会被吊销执照？", "超过6个月未开业，或开业后自行停业连续6个月以上。"),
+    ("专利代理机构指派专利代理师承办与其近亲属有利益冲突的业务，是否合法？", "不合法。"),
+    ("个人所得税法规定，居民个人取得综合所得，应在何时前办理汇算清缴？", "次年3月1日至6月30日内。"),
+    ("个人信息处理者处理敏感个人信息，必须取得个人的哪种同意？", "单独同意。"),
+    ("个人独资企业解散后，原投资人对未偿债务的偿还责任几年后消灭？", "5年。"),
+    ("个人独资企业名称与登记不符，罚款上限是多少？", "2000元。"),
+    ("在交通不便地区，工商部门是否可以先行实施查封？", "可以，在24小时内补办查封决定书并送达当事人。"),
+]
 
-def test_single_query(file: str, query: str):
-    """单次问答测试"""
-    print("\n" + "=" * 60)
-    print("🚀 单次问答模式")
-    print("=" * 60)
+# 写入 CSV
+output_file = 'qa_test_set.csv'
+with open(output_file, mode='w', encoding='utf-8', newline='') as f:
+    writer = csv.writer(f)
+    # 写表头
+    writer.writerow(["question", "answer"])
+    # 写内容
+    for q, a in qa_data:
+        writer.writerow([q, a])
 
-    # 1. 初始化向量库
-    build_vector_store(file)
-
-    # 2. 创建 Agent 图
-    agent_graph = create_agent_graph()
-
-    # 3. 执行查询
-    start_time = time.time()
-    config = {"configurable": {"thread_id": "test_single"}}
-
-    print(f"\n📝 问题: {query}\n")
-
-    for step, event in enumerate(agent_graph.stream(
-            {
-                "messages": [HumanMessage(content=query)],
-                "rag_context": "",
-                "next_action": ""
-            },
-            config=config,
-            stream_mode="updates"
-    ), start=1):
-        node_name = list(event.keys())[0]
-        print(f"Step {step}: 执行节点 [{node_name}]")
-
-    # 4. 获取最终答案
-    final_state = agent_graph.get_state(config)
-    final_message = final_state.values["messages"][-1]
-
-    print("\n" + "=" * 60)
-    print("🎯 最终回答:")
-    print("=" * 60)
-    print(final_message.content)
-    print(f"\n⏱️ 总耗时: {time.time() - start_time:.2f}秒\n")
-
-
-def test_multi_turn(file: str):
-    """多轮对话测试"""
-    import uuid
-
-    print("\n" + "=" * 60)
-    print("🤖 多轮对话模式（输入 'quit' 退出）")
-    print("=" * 60)
-
-    # 1. 初始化向量库
-    build_vector_store(file)
-
-    # 2. 创建 Agent 图
-    agent_graph = create_agent_graph()
-
-    # 3. 生成会话ID（保持上下文）
-    thread_id = str(uuid.uuid4())
-
-    while True:
-        query = input("\n👤 你: ").strip()
-        if query.lower() in ['quit', 'exit', 'q', '退出']:
-            print("👋 再见！")
-            break
-
-        if not query:
-            continue
-
-        # 执行查询
-        start_time = time.time()
-        config = {"configurable": {"thread_id": thread_id}}
-
-        for event in agent_graph.stream(
-                {
-                    "messages": [HumanMessage(content=query)],
-                    "rag_context": "",
-                    "next_action": ""
-                },
-                config=config,
-                stream_mode="updates"
-        ):
-            pass  # 静默执行
-
-        # 获取答案
-        final_state = agent_graph.get_state(config)
-        final_message = final_state.values["messages"][-1]
-
-        print(f"\n🤖 助手: {final_message.content}")
-        print(f"   (耗时: {time.time() - start_time:.2f}秒)")
-
-
-if __name__ == "__main__":
-    # ===== 测试1: 单次问答 =====
-    if __name__ == "__main__":
-        questions = [
-            "关于统一计量制度的命令是什么时候发布的",
-            "法定计量单位包括哪些内容？",
-            "这个命令的发布日期是多少？"
-        ]
-
-        for q in questions:
-            test_single_query("data/国务院关于在我国统一实行法定计量单位的命令.txt", q)
-
-    # ===== 测试2: 多轮对话（取消注释使用） =====
-    # test_multi_turn("国务院关于在我国统一实行法定计量单位的命令.txt")
-
-    # ===== 测试3: 批量测试多个问题 =====
-    # questions = [
-    #     "关于统一计量制度的命令是什么时候发布的",
-    #     "法定计量单位包括哪些内容？",
-    #     "这个命令由哪个部门发布？"
-    # ]
-    # for q in questions:
-    #     test_single_query("国务院关于在我国统一实行法定计量单位的命令.txt", q)
+print(f"已生成文件：{output_file}")
